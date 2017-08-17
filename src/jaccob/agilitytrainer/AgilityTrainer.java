@@ -1,88 +1,52 @@
 package jaccob.agilitytrainer;
 
-import java.awt.Point;
-import java.lang.reflect.Array;
-import java.util.Arrays;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.io.FileNotFoundException;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import org.powerbot.script.Area;
 import org.powerbot.script.Condition;
 import org.powerbot.script.Filter;
+import org.powerbot.script.PaintListener;
 import org.powerbot.script.PollingScript;
 import org.powerbot.script.Script.Manifest;
 import org.powerbot.script.Tile;
 import org.powerbot.script.rt4.BasicQuery;
 import org.powerbot.script.rt4.ClientContext;
-import org.powerbot.script.rt4.Game.Crosshair;
+import org.powerbot.script.rt4.Constants;
 import org.powerbot.script.rt4.GameObject;
 import org.powerbot.script.rt4.GroundItem;
 import org.powerbot.script.rt4.LocalPath;
 import org.powerbot.script.rt4.Player;
-import org.powerbot.script.rt4.TilePath;
+
+import jaccob.agilitytrainer.Course.Obstacle;
 
 @Manifest(name="AgilityTrainer", description="description", properties="")
-public class AgilityTrainer extends PollingScript<ClientContext> {
-	static final int ROUGH_WALL_ID = 10073;
-	static final int[] ROUGH_WALL_BOUNDS = {8, 28, -200, -20, 30, 98};
-	static final int[] ROUGH_WALL_YAWS = {51, 86};
-	static final int ROUGH_WALL_TIME = 5000;
-	static final Tile ROUGH_WALL_END = new Tile(3102, 3279, 3);
-	
-	static final int TIGHT_ROPE_1_ID = 10074;
-	static final int[] TIGHT_ROPE_1_BOUNDS = {20, 56, -32, 0, 8, 128};
-	static final int[] TIGHT_ROPE_1_YAWS = {169, 182};
-	static final int TIGHT_ROPE_1_TIME = 10000;
-	static final Tile TIGHT_ROPE_1_END = new Tile(3090, 3277, 3);
-	
-	static final int TIGHT_ROPE_2_ID = 10075;
-	static final int[] TIGHT_ROPE_2_BOUNDS = {8, 128, -32, 0, 20, 56};
-	static final int[] TIGHT_ROPE_2_YAWS = {169, 182};
-	static final int TIGHT_ROPE_2_TIME = 10000;
-	static final Tile TIGHT_ROPE_2_END = new Tile(3092, 3267, 3);
-	
-	static final int NARROW_WALL_ID = 10077;
-	static final int[] NARROW_WALL_BOUNDS = {-32, 32, -20, 0, -32, 32};
-	static final int[] NARROW_WALL_YAWS = {217, 256};
-	static final int NARROW_WALL_TIME = 10000;
-	static final Tile NARROW_WALL_END = new Tile(3088, 3261, 3);
-	
-	static final int WALL_ID = 10084;
-	static final int[] WALL_BOUNDS = {-32, 32, 144, 0, -56, -76};
-	static final int[] WALL_YAWS = {300, 320};
-	static final int WALL_TIME = 10000;
-	static final Tile WALL_END = new Tile(3088, 3255, 3);
-	
-	static final int GAP_ID = 10085;
-	static final int[] GAP_BOUNDS = {-116, 32, -16, 0, -28, 56};
-	static final int[] GAP_YAWS = {0, 17};
-	static final int GAP_TIME = 10000;
-	static final Tile GAP_END = new Tile(3096, 3256, 3);
-	
-	static final int CRATE_ID = 10086;
-	static final int[] CRATE_BOUNDS = {-140, 8, -28, 0, -92, 32};
-	static final int[] CRATE_YAWS = {74, 113};
-	static final int CRATE_TIME = 10000;
-	static final Tile CRATE_END = new Tile(3103, 3261, 0);
-	static final Area[] CRATE_PATH = {new Area(new Tile(3098, 3258, 3), new Tile(3100, 3260, 3))};
-	
-	static final Obstacle[] OBSTACLES = {new Obstacle(ROUGH_WALL_ID, ROUGH_WALL_BOUNDS, ROUGH_WALL_YAWS, ROUGH_WALL_TIME, ROUGH_WALL_END),
-										 new Obstacle(TIGHT_ROPE_1_ID, TIGHT_ROPE_1_BOUNDS, TIGHT_ROPE_1_YAWS, TIGHT_ROPE_1_TIME, TIGHT_ROPE_1_END),
-										 new Obstacle(TIGHT_ROPE_2_ID, TIGHT_ROPE_2_BOUNDS, TIGHT_ROPE_2_YAWS, TIGHT_ROPE_2_TIME, TIGHT_ROPE_2_END),
-										 new Obstacle(NARROW_WALL_ID, NARROW_WALL_BOUNDS, NARROW_WALL_YAWS, NARROW_WALL_TIME, NARROW_WALL_END),
-										 new Obstacle(WALL_ID, WALL_BOUNDS, WALL_YAWS, WALL_TIME, WALL_END),
-										 new Obstacle(GAP_ID, GAP_BOUNDS, GAP_YAWS, GAP_TIME, GAP_END),
-										 new Obstacle(CRATE_ID, CRATE_BOUNDS, CRATE_YAWS, CRATE_TIME, CRATE_END)};
-	
-	static final Area START_AREA = new Area(new Tile(3103, 3277, 0), new Tile(3105, 3280, 0));
-	
+public class AgilityTrainer extends PollingScript<ClientContext> implements PaintListener{
 	static final int MARKS_OF_GRACE_ID = 11849;
+	static CourseLoader COURSE_LOADER;
 	
-	int current = 0;
+	static {
+		try {
+			COURSE_LOADER = new CourseLoader("resources/courses.json");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+	}
+
+	int laps = 0;
+	AgilityCourseManager runner;
 	
 	@Override
 	public void start() {
-		ctx.camera.pitch(randomRange(60, 80));
+		ctx.camera.pitch(randomRange(40, 55));
+		
+		runner = new AgilityCourseManager(COURSE_LOADER.getCourses()[0]);
 	}
+	
 	
 	final boolean waitTillVisible(GameObject object) {
 		return Condition.wait(new Callable<Boolean>() {
@@ -93,22 +57,47 @@ public class AgilityTrainer extends PollingScript<ClientContext> {
 		}, 50, 100);
 	}
 	
+	final boolean moving(Player myPlayer) {
+		Tile lastPos = myPlayer.tile();
+		
+		return Condition.wait(new Callable<Boolean>() {
+			@Override
+			public Boolean call() throws Exception {
+				return !myPlayer.tile().equals(lastPos);
+			}
+		}, 50, 40);
+	}
+	
+	final Tile arrayToTile(int[] arr) {
+		return new Tile(arr[0], arr[1], arr[2]);
+	}
+	
+	final Area getArea(int[][] area) {
+		Tile[] ts = new Tile[area.length];
+		for (int i = 0; i < area.length; i++) {
+			ts[i] = arrayToTile(area[i]);
+			
+		}
+		return new Area(ts[0], ts[1]);
+	}
+	
 	final boolean walkToObstacle(Player myPlayer, Obstacle ob, GameObject target) {
 		if (ob.path != null && ob.path.length > 0) {
 			Tile[] randomPath = new Tile[ob.path.length];
 			
-			for (int i = 0; i < randomPath.length; i++) 
+			for (int i = 0; i < ob.path.length; i++) {
 				randomPath[i] = ob.path[i].getRandomTile();
+			}
 			
 			int c = 0;
 			while (!target.inViewport() && c < randomPath.length) {
 				Tile t = randomPath[c];
 				
-				if (t.matrix(ctx).interact("Walk Here")) {
+				if (t.matrix(ctx).interact("Walk Here") || ctx.movement.step(t)) {
 					Condition.wait(new Callable<Boolean>() {
 						@Override
 						public Boolean call() throws Exception {
-							return ctx.movement.distance(ctx.movement.destination()) < 3;
+							return ctx.movement.distance(ctx.movement.destination()) < 5;
 						}
 					});
 				}
@@ -121,7 +110,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> {
 			return true;
 	}
 	
-	final boolean clickObstacle(Player myPlayer, Obstacle ob, int current) {
+	final boolean clickObstacle(Player myPlayer, Obstacle ob) {
 		GameObject target = getObstacleObject(ob);
 		
 		if (!walkToObstacle(myPlayer, ob, target))
@@ -130,34 +119,37 @@ public class AgilityTrainer extends PollingScript<ClientContext> {
 		if (!waitTillVisible(target))
 			return false;
 		
-		for (int tries = 0; tries < 10; tries++)
-			if (target.interact(target.actions()[0]))
-				break;
+		String action = target.actions()[0];
 		
-		ctx.camera.angle(randomRange(ob.yaws));
+		for (int tries = 0; tries < 10; tries++) {
+			if (ob.rightClick) {
+				if (target.interact(false, action)) {
+					break;
+				}
+			} else if (target.interact(action))
+				break;	
+		}
 		
-		return waitObstacle(myPlayer, ob, current);
+		ctx.camera.angle(getRandomAngle(ob.yaws));
+		
+		return waitObstacle(myPlayer, ob);
 	}
 	
-	final boolean waitObstacle(Player myPlayer, Obstacle ob, int index) {
-		GameObject next = getObstacleObject(OBSTACLES[(index + 1) % OBSTACLES.length]);
-		String[] actions = next.actions();
-		
-		boolean followObject = Math.random() > 0.6;
+	final boolean waitObstacle(Player myPlayer, Obstacle ob) {
+		GameObject next = getObstacleObject(runner.peekNext());
+
+		boolean followObject = Math.random() > 0.9;
 		long t = getRuntime() + ob.time;
 		
+		int xp = ctx.skills.experience(Constants.SKILLS_AGILITY);
 		while (!ctx.controller.isStopping() && getRuntime() <= t) {
-			if (myPlayer.tile().equals(ob.end))
+			if (ctx.skills.experience(Constants.SKILLS_AGILITY) > xp) {
 				return true;
-			
-			String[] items = ctx.menu.items();
-			if (followObject) {// && items.length > 0 && actions.length > 0 && !items[0].contains(actions[0]))
-				//if (Math.random() > 0.9)
-					//next.hover();
-				ctx.input.move(next.centerPoint());
 			}
 			
-			//Condition.sleep(100 + (int)(Math.random() * 67));
+			if (followObject) {
+				ctx.input.move(next.centerPoint());
+			}
 		}
 		
 		return false;
@@ -171,17 +163,9 @@ public class AgilityTrainer extends PollingScript<ClientContext> {
 		return (int)(minAndMax[0] + (Math.random() * (minAndMax[1] - minAndMax[0])));
 	}
 	
-	final boolean isFinished(Player myPlayer) {
-		return myPlayer.tile().equals(OBSTACLES[OBSTACLES.length - 1].end);
-	}
-	
 	final GameObject getObstacleObject(Obstacle ob) {
-		if (ob.gameObject != null)
-			return ob.gameObject;
-		
 		GameObject target = ctx.objects.select().id(ob.id).poll();
 		target.bounds(ob.bounds);
-		//ob.setGameObject(target);
 		
 		return target;
 	}
@@ -202,7 +186,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> {
 		
 		GroundItem t = target.peek();
 		
-		int c = ctx.inventory.select().id(11849).count();
+		int c = ctx.inventory.select().id(11849).count(true);
 		
 		t.interact("Take", t.name());
 		
@@ -214,64 +198,85 @@ public class AgilityTrainer extends PollingScript<ClientContext> {
 		});
 	}
 	
+	final boolean relocate() {
+		GameObject first = getObstacleObject(runner.current());
+		Area startArea = runner.getCourse().startArea;
+				
+		LocalPath path = ctx.movement.findPath(startArea.getRandomTile());
+		while (!ctx.controller.isStopping() && !first.inViewport() && path.traverse()) {
+			ctx.chat.clickContinue();
+			
+			Condition.wait(new Callable<Boolean>() {
+				@Override
+				public Boolean call() throws Exception {
+					return ctx.movement.distance(ctx.movement.destination()) < 3;
+				}
+			}, 10, 6000);
+		}
+		
+		System.out.println(first.inViewport());
+		
+		return first.inViewport();
+	}
+	
 	@Override
 	public void poll() {
 		Player myPlayer = ctx.players.local();
 		if (ctx.game.floor() == 0) {
-			GameObject first = getObstacleObject(OBSTACLES[0]);
-			
-			LocalPath path = ctx.movement.findPath(START_AREA.getRandomTile());
-			while (!ctx.controller.isStopping() && !first.inViewport() && path.traverse()) {
-				ctx.chat.clickContinue();
-				
-				Condition.wait(new Callable<Boolean>() {
-					@Override
-					public Boolean call() throws Exception {
-						return ctx.movement.distance(ctx.movement.destination()) < 3;
-					}
-				}, 10, 6000);
-			}
+			if (!relocate())
+				return;
 			
 			if (ctx.controller.isStopping())
 				return;
 		}
 
-		while (!ctx.controller.isStopping() && current < OBSTACLES.length) {
+		while (!ctx.controller.isStopping() && !runner.atEnd()) {
+			Obstacle current = runner.current();
 			for (int tries = 0; tries < 4; tries++) {
-				if (clickObstacle(myPlayer, OBSTACLES[current], current)) {
-					Condition.sleep(230);
+				if (clickObstacle(myPlayer, current)) {
+					Condition.sleep(current.delay);
 					
 					takeMarksOfGrace();
-					current++;
 					
-					System.out.println("next " + current);
+					System.out.println("next " + runner.current());
 					
 					break;
 				}
-				System.out.println("failll " + current);
+				System.out.println("Retrying " + current.title);
 				
 				if (ctx.controller.isStopping() || ctx.game.floor() == 0) {
-					current = 0;
+					runner.reset();
 					break;
 				}
+
+				Obstacle pastOb = runner.peekPrev();
 				
-				int past = current - 1;
-				if (past < 0)
-					past += OBSTACLES.length;
-				
-				Obstacle pastOb = OBSTACLES[past];
-				ctx.camera.angle(randomRange(pastOb.yaws));
+				if (!getObstacleObject(pastOb).inViewport())
+					ctx.camera.angle(getRandomAngle(pastOb.yaws));
 			}
 			
 			if (ctx.game.floor() == 0) {
-				current = 0;
+				runner.reset();
 				break;
 			}
+			
+			runner.next();
 		}
+		
+		if (runner.atStart())
+			laps++;
+		
 		Condition.sleep(200);
-		current = 0;
+		runner.reset();
 		
 		//if level 0 then failed
+	}
+	
+	final int getRandomAngle(int[] yaws) {
+		int r = randomRange(yaws);
+		if (r < 0)
+			r += 360;
+		return r;
 	}
 	
 	final boolean hoverSmart(GameObject go) {
@@ -289,31 +294,41 @@ public class AgilityTrainer extends PollingScript<ClientContext> {
 			}
 		}, 30);
 	}
-
-	static class Obstacle {
-		public int id;
-		public int[] bounds;
-		public int[] yaws;
-		public int time;
-		public Tile end;
-		public Area[] path;
-		private GameObject gameObject;
-		
-		public Obstacle(int id, int[] bounds, int[] yaws, int time, Tile end, Area... path) {
-			this.id = id;
-			this.bounds = bounds;
-			this.yaws = yaws;
-			this.time = time;
-			this.end = end;
-			this.path = path;
+	
+	private int startXP = -1;
+	
+	private int getXPPerHour() {
+		if (startXP == -1) {
+			startXP = ctx.skills.experience(Constants.SKILLS_AGILITY);
 		}
 		
-		public void setGameObject(GameObject obj) {
-			this.gameObject = obj;
-		}
+		long runTime = getRuntime();
+		int currentExp = ctx.skills.experience(Constants.SKILLS_AGILITY);
+		int expGain = currentExp - startXP;
+		int expPh = (int) (3600000d / (long) runTime * (double) (expGain));
 		
-		public GameObject getGameObject() {
-			return gameObject;
-		}
+		return expPh;
+	}
+	
+	public static String formatInterval(final long interval, boolean millisecs )
+	{
+	    final long hr = TimeUnit.MILLISECONDS.toHours(interval);
+	    final long min = TimeUnit.MILLISECONDS.toMinutes(interval) %60;
+	    final long sec = TimeUnit.MILLISECONDS.toSeconds(interval) %60;
+	    final long ms = TimeUnit.MILLISECONDS.toMillis(interval) %1000;
+	    if( millisecs ) {
+	        return String.format("%02d:%02d:%02d.%03d", hr, min, sec, ms);
+	    } else {
+	        return String.format("%02d:%02d:%02d", hr, min, sec );
+	    }
+	}
+	
+	@Override
+	public void repaint(Graphics g) {
+		Graphics2D g2 = (Graphics2D)g;
+		g2.setColor(Color.GREEN);
+		g2.drawString("Time running: " + formatInterval(getRuntime(), false), 10, 30);
+		g2.drawString("XP Per Hour: " + getXPPerHour(), 10, 60);
+		g2.drawString("Laps done: " + laps, 10, 90);
 	}
 }

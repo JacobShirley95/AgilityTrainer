@@ -1,22 +1,131 @@
+[{
+    "title": "Draynor",
+    "startArea": [[3103, 3277, 0], [3105, 3280, 0]],
+	"obstacles": [{
+        "title": "Rough Wall",
+		"id": "10073",
+		"bounds": [8, 28, -200, -20, 30, 98],
+		"yaws": [51, 86],
+		"time": "5000",
+		"endTile": [3102, 3279, 3],
+		"delay": 200
+    },{
+    	"title": "Tight Rope 1",
+		"id": "10074",
+		"bounds": [20, 56, -32, 0, 8, 128],
+		"yaws": [169, 182],
+		"time": "10000",
+		"endTile": [3090, 3277, 3],
+		"delay": 200
+	},{
+    	"title": "Tight Rope 2",
+		"id": "10075",
+		"bounds": [8, 128, -32, 0, 20, 56],
+		"yaws": [169, 182],
+		"time": "10000",
+		"endTile": [3092, 3267, 3],
+		"delay": 600
+	},{
+    	"title": "Narrow Wall",
+		"id": "10077",
+		"bounds": [-32, 10, -20, 0, -32, 32],
+		"yaws": [217, 256],
+		"time": "10000",
+		"endTile": [3088, 3261, 3]
+	},{
+    	"title": "Wall",
+		"id": "10084",
+		"bounds": [-32, 32, 144, 0, -56, -76],
+		"yaws": [300, 320],
+		"time": "10000",
+		"endTile": [3088, 3255, 3],
+		"delay": 200
+	},{
+    	"title": "Gap",
+		"id": "10085",
+		"bounds": [-116, 32, -16, 0, -28, 56],
+		"yaws": [0, 17],
+		"time": "10000",
+		"endTile": [3096, 3256, 3],
+		"delay": 500 
+	},{
+    	"title": "Crate",
+		"id": "10086",
+		"bounds": [-140, 8, -28, 0, -92, 32],
+		"yaws": [74, 113],
+		"time": "10000",
+		"endTile": [3103, 3261, 0]
+	}]
+},
 {
-    "glossary": {
-        "title": "example glossary",
-		"GlossDiv": {
-            "title": "S",
-			"GlossList": {
-                "GlossEntry": {
-                    "ID": "SGML",
-					"SortAs": "SGML",
-					"GlossTerm": "Standard Generalized Markup Language",
-					"Acronym": "SGML",
-					"Abbrev": "ISO 8879:1986",
-					"GlossDef": {
-                        "para": "A meta-markup language, used to create markup languages such as DocBook.",
-						"GlossSeeAlso": ["GML", "XML"]
-                    },
-					"GlossSee": "markup"
-                }
-            }
-        }
-    }
-}
+    "title": "Canifis",
+    "startArea": [[3506, 3486, 0], [3508, 3488, 0]],
+	"obstacles": [{
+        "title": "Tall Tree",
+		"id": "10819",
+		"rightClick": true,
+		"bounds": [156, 220, -216, 0, -56, 0],
+		"yaws": [-13, 13],
+		"time": "10000",
+		"endTile": [3506, 3492, 2],
+		"delay": 100
+    },{
+        "title": "Gap 1",
+		"id": "10820",
+		"bounds": [-92, 76, -28, 0, -104, 32],
+		"yaws": [82, 99],
+		"time": "10000",
+		"endTile": [3502, 3504, 2],
+		"delay": 100
+    },{
+        "title": "Gap 2",
+		"id": "10821",
+		"bounds": [-32, 88, -20, 0, -48, 92],
+		"yaws": [103, 119],
+		"time": "10000",
+		"endTile": [3492, 3504, 2],
+		"delay": 100
+    },{
+        "title": "Gap 3",
+		"id": "10828",
+		"bounds": [-56, 88, -20, 0, -40, 84],
+		"yaws": [184, 197],
+		"time": "10000",
+		"endTile": [3479, 3499, 3],
+		"delay": 100
+    },{
+        "title": "Gap 4",
+		"id": "10822",
+		"bounds": [-64, 48, -12, 0, -28, 124],
+		"yaws": [227, 242],
+		"time": "10000",
+		"endTile": [3478, 3486, 2],
+		"delay": 100
+    },{
+        "title": "Pole vault",
+		"id": "10831",
+		"bounds": [-84, 32, -24, 0, -32, 32],
+		"yaws": [271, 282],
+		"time": "10000",
+		"endTile": [3489, 3476, 3],
+		"finishRadius": 2,
+		"delay": 100
+    },{
+        "title": "Gap 5",
+		"id": "10823",
+		"bounds": [-40, 44, -20, 0, -108, 32],
+		"yaws": [-13, 13],
+		"time": "10000",
+		"endTile": [3510, 3476, 2],
+		"path": [[[3500, 3476, 3], [3502, 3478, 3]]],
+		"delay": 100
+    },{
+        "title": "Gap 6",
+		"id": "10832",
+		"bounds": [-68, 44, -12, 0, -24, 76],
+		"yaws": [-13, 13],
+		"time": "10000",
+		"endTile": [3510, 3485, 0],
+		"delay": 100
+    }]
+}]
