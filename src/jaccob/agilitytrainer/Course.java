@@ -5,6 +5,7 @@ import org.powerbot.script.Tile;
 
 public class Course {
 	public String title;
+	public int[] pitches;
 	public Area startArea;
 	public Obstacle[] obstacles;
 	

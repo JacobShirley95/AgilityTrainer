@@ -1,5 +1,6 @@
 [{
     "title": "Draynor",
+    "pitches": [40, 55],
     "startArea": [[3103, 3277, 0], [3105, 3280, 0]],
 	"obstacles": [{
         "title": "Rough Wall",
@@ -59,6 +60,7 @@
 },
 {
     "title": "Canifis",
+    "pitches": [40, 55],
     "startArea": [[3506, 3486, 0], [3508, 3488, 0]],
 	"obstacles": [{
         "title": "Tall Tree",

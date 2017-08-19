@@ -3,6 +3,7 @@ package jaccob.agilitytrainer;
 
 public class CourseData {
 	public String title;
+	public int[] pitches;
 	public int[][] startArea;
 	public ObstacleData[] obstacles;
 	

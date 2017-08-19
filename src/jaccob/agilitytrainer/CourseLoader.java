@@ -28,6 +28,10 @@ public class CourseLoader {
 		return courses;
 	}
 	
+	public Course getCourse(int id) {
+		return courses[id];
+	}
+	
 	public static final Tile arrayToTile(int[] arr) {
 		return new Tile(arr[0], arr[1], arr[2]);
 	}

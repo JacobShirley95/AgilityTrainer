@@ -26,6 +26,7 @@ import jaccob.agilitytrainer.Course.Obstacle;
 
 @Manifest(name="AgilityTrainer", description="description", properties="")
 public class AgilityTrainer extends PollingScript<ClientContext> implements PaintListener{
+	static final int COURSE_ID = 1;
 	static final int MARKS_OF_GRACE_ID = 11849;
 	static CourseLoader COURSE_LOADER;
 	
@@ -38,15 +39,9 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 	}
 
 	int laps = 0;
+	int marksOfGracePickedUp = 0;
+	int startXP = -1;
 	AgilityCourseManager runner;
-	
-	@Override
-	public void start() {
-		ctx.camera.pitch(randomRange(40, 55));
-		
-		runner = new AgilityCourseManager(COURSE_LOADER.getCourses()[0]);
-	}
-	
 	
 	final boolean waitTillVisible(GameObject object) {
 		return Condition.wait(new Callable<Boolean>() {
@@ -97,7 +92,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 					Condition.wait(new Callable<Boolean>() {
 						@Override
 						public Boolean call() throws Exception {
-							return ctx.movement.distance(ctx.movement.destination()) < 5;
+							return target.inViewport() || ctx.movement.distance(ctx.movement.destination()) < 5;
 						}
 					});
 				}
@@ -179,6 +174,10 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 		};
 	}
 	
+	final int countMarksOfGrace() {
+		return ctx.inventory.select().id(MARKS_OF_GRACE_ID).count(true);
+	}
+	
 	final boolean takeMarksOfGrace() {
 		BasicQuery<GroundItem> target = ctx.groundItems.select().id(MARKS_OF_GRACE_ID).nearest().viewable().select(reachable());
 		if (target.size() == 0)
@@ -186,16 +185,22 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 		
 		GroundItem t = target.peek();
 		
-		int c = ctx.inventory.select().id(11849).count(true);
+		int c = countMarksOfGrace();
 		
-		t.interact("Take", t.name());
-		
-		return Condition.wait(new Callable<Boolean>() {
-			@Override
-			public Boolean call() throws Exception {
-				return ctx.inventory.select().id(MARKS_OF_GRACE_ID).count(true) > c;
+		for (int i = 0; i < 5; i++) {
+			if (t.interact("Take", t.name())) {
+				if (Condition.wait(new Callable<Boolean>() {
+					@Override
+					public Boolean call() throws Exception {
+						return countMarksOfGrace() > c;
+					}
+				})) {
+					return true;
+				}
 			}
-		});
+		}
+		
+		return false;
 	}
 	
 	final boolean relocate() {
@@ -214,62 +219,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 			}, 10, 6000);
 		}
 		
-		System.out.println(first.inViewport());
-		
 		return first.inViewport();
-	}
-	
-	@Override
-	public void poll() {
-		Player myPlayer = ctx.players.local();
-		if (ctx.game.floor() == 0) {
-			if (!relocate())
-				return;
-			
-			if (ctx.controller.isStopping())
-				return;
-		}
-
-		while (!ctx.controller.isStopping() && !runner.atEnd()) {
-			Obstacle current = runner.current();
-			for (int tries = 0; tries < 4; tries++) {
-				if (clickObstacle(myPlayer, current)) {
-					Condition.sleep(current.delay);
-					
-					takeMarksOfGrace();
-					
-					System.out.println("next " + runner.current());
-					
-					break;
-				}
-				System.out.println("Retrying " + current.title);
-				
-				if (ctx.controller.isStopping() || ctx.game.floor() == 0) {
-					runner.reset();
-					break;
-				}
-
-				Obstacle pastOb = runner.peekPrev();
-				
-				if (!getObstacleObject(pastOb).inViewport())
-					ctx.camera.angle(getRandomAngle(pastOb.yaws));
-			}
-			
-			if (ctx.game.floor() == 0) {
-				runner.reset();
-				break;
-			}
-			
-			runner.next();
-		}
-		
-		if (runner.atStart())
-			laps++;
-		
-		Condition.sleep(200);
-		runner.reset();
-		
-		//if level 0 then failed
 	}
 	
 	final int getRandomAngle(int[] yaws) {
@@ -294,8 +244,6 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 			}
 		}, 30);
 	}
-	
-	private int startXP = -1;
 	
 	private int getXPPerHour() {
 		if (startXP == -1) {
@@ -326,9 +274,69 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 	@Override
 	public void repaint(Graphics g) {
 		Graphics2D g2 = (Graphics2D)g;
+		
 		g2.setColor(Color.GREEN);
 		g2.drawString("Time running: " + formatInterval(getRuntime(), false), 10, 30);
 		g2.drawString("XP Per Hour: " + getXPPerHour(), 10, 60);
 		g2.drawString("Laps done: " + laps, 10, 90);
+		g2.drawString("Marks of grace: " + marksOfGracePickedUp, 10, 60);
+	}
+	
+	@Override
+	public void start() {
+		runner = new AgilityCourseManager(COURSE_LOADER.getCourse(COURSE_ID));
+		ctx.camera.pitch(randomRange(runner.getCourse().pitches));
+	}
+	
+	@Override
+	public void poll() {
+		Player myPlayer = ctx.players.local();
+		if (ctx.game.floor() == 0) {
+			if (!relocate())
+				return;
+			
+			if (ctx.controller.isStopping())
+				return;
+		}
+
+		while (!ctx.controller.isStopping() && !runner.atEnd()) {
+			Obstacle current = runner.current();
+			for (int tries = 0; tries < 4; tries++) {
+				if (clickObstacle(myPlayer, current)) {
+					Condition.sleep(current.delay);
+					
+					if (takeMarksOfGrace())
+						marksOfGracePickedUp++;
+					
+					System.out.println("next");
+					
+					break;
+				}
+				
+				System.out.println("Retrying " + current.title);
+				
+				if (ctx.controller.isStopping() || ctx.game.floor() == 0) {
+					break;
+				}
+
+				Obstacle pastOb = runner.peekPrev();
+				
+				if (!getObstacleObject(pastOb).inViewport())
+					ctx.camera.angle(getRandomAngle(pastOb.yaws));
+			}
+			
+			if (ctx.game.floor() == 0) {
+				runner.reset();
+				break;
+			}
+			
+			runner.next();
+		}
+		
+		if (runner.atStart())
+			laps++;
+		
+		Condition.sleep(200);
+		runner.reset();
 	}
 }
