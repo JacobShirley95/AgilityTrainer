@@ -4,7 +4,7 @@ import jaccob.agilitytrainer.Course.Obstacle;
 
 public class AgilityCourseManager {
 	private Course course;
-	private int currentOb;
+	private int currentOb = 0;
 
 	public AgilityCourseManager(Course course) {
 		this.course = course;
@@ -41,7 +41,7 @@ public class AgilityCourseManager {
 	}
 	
 	public boolean atEnd() {
-		return currentOb == course.obstacles.length;
+		return currentOb == course.obstacles.length - 1;
 	}
 	
 	public Obstacle next() {

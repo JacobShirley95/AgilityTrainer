@@ -14,10 +14,10 @@ public class CourseLoader {
 	
 	public CourseLoader(String file) throws FileNotFoundException {
 		Gson obstacleJson = new Gson();
-		JsonReader reader = new JsonReader(new FileReader("resources/courses.json"));
+		JsonReader reader = new JsonReader(new FileReader(file));
 		CourseData[] data = obstacleJson.fromJson(reader, CourseData[].class);
 		courses = new Course[data.length];
-		
+
 		for (int i = 0; i < courses.length; i++) {
 			courses[i] = new Course();
 			courses[i].fromData(data[i]);

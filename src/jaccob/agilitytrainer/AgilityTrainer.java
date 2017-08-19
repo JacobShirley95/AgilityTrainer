@@ -3,6 +3,7 @@ package jaccob.agilitytrainer;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.io.FileNotFoundException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -92,7 +93,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 					Condition.wait(new Callable<Boolean>() {
 						@Override
 						public Boolean call() throws Exception {
-							return target.inViewport() || ctx.movement.distance(ctx.movement.destination()) < 5;
+							return target.inViewport() || ctx.movement.distance(ctx.movement.destination()) < 4;
 						}
 					});
 				}
@@ -131,16 +132,25 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 	}
 	
 	final boolean waitObstacle(Player myPlayer, Obstacle ob) {
-		GameObject next = getObstacleObject(runner.peekNext());
+		Obstacle nextOb = runner.peekNext();
+		GameObject next = getObstacleObject(nextOb);
 
 		boolean followObject = Math.random() > 0.9;
 		long t = getRuntime() + ob.time;
+		
+		if (nextOb.path != null && nextOb.path.length != 0) {
+			Point p = nextOb.path[0].getRandomTile().matrix(ctx).mapPoint();
+			//ctx.input.move(p);
+		}
 		
 		int xp = ctx.skills.experience(Constants.SKILLS_AGILITY);
 		while (!ctx.controller.isStopping() && getRuntime() <= t) {
 			if (ctx.skills.experience(Constants.SKILLS_AGILITY) > xp) {
 				return true;
 			}
+			
+			if (!runner.atEnd() && !runner.atStart() && ctx.game.floor() == 0)
+				return false;
 			
 			if (followObject) {
 				ctx.input.move(next.centerPoint());
@@ -206,7 +216,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 	final boolean relocate() {
 		GameObject first = getObstacleObject(runner.current());
 		Area startArea = runner.getCourse().startArea;
-				
+		
 		LocalPath path = ctx.movement.findPath(startArea.getRandomTile());
 		while (!ctx.controller.isStopping() && !first.inViewport() && path.traverse()) {
 			ctx.chat.clickContinue();
@@ -279,7 +289,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 		g2.drawString("Time running: " + formatInterval(getRuntime(), false), 10, 30);
 		g2.drawString("XP Per Hour: " + getXPPerHour(), 10, 60);
 		g2.drawString("Laps done: " + laps, 10, 90);
-		g2.drawString("Marks of grace: " + marksOfGracePickedUp, 10, 60);
+		g2.drawString("Marks of grace: " + marksOfGracePickedUp, 10, 120);
 	}
 	
 	@Override
@@ -299,7 +309,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 				return;
 		}
 
-		while (!ctx.controller.isStopping() && !runner.atEnd()) {
+		while (!ctx.controller.isStopping()) {
 			Obstacle current = runner.current();
 			for (int tries = 0; tries < 4; tries++) {
 				if (clickObstacle(myPlayer, current)) {
@@ -321,8 +331,11 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 
 				Obstacle pastOb = runner.peekPrev();
 				
-				if (!getObstacleObject(pastOb).inViewport())
+				GameObject obj = getObstacleObject(pastOb);
+				if (!obj.inViewport()) {
+					ctx.movement.step(obj);
 					ctx.camera.angle(getRandomAngle(pastOb.yaws));
+				}
 			}
 			
 			if (ctx.game.floor() == 0) {
@@ -331,6 +344,8 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 			}
 			
 			runner.next();
+			if (runner.atStart())
+				break;
 		}
 		
 		if (runner.atStart())
