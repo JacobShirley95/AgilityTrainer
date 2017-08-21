@@ -22,6 +22,7 @@ import org.powerbot.script.rt4.GameObject;
 import org.powerbot.script.rt4.GroundItem;
 import org.powerbot.script.rt4.LocalPath;
 import org.powerbot.script.rt4.Player;
+import org.powerbot.script.rt4.TileMatrix;
 
 import jaccob.agilitytrainer.Course.Obstacle;
 
@@ -93,7 +94,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 					Condition.wait(new Callable<Boolean>() {
 						@Override
 						public Boolean call() throws Exception {
-							return target.inViewport() || ctx.movement.distance(ctx.movement.destination()) < 4;
+							return ctx.movement.distance(ctx.movement.destination()) < 4;
 						}
 					});
 				}
@@ -138,10 +139,10 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 		boolean followObject = Math.random() > 0.9;
 		long t = getRuntime() + ob.time;
 		
-		if (nextOb.path != null && nextOb.path.length != 0) {
-			Point p = nextOb.path[0].getRandomTile().matrix(ctx).mapPoint();
-			//ctx.input.move(p);
-		}
+		boolean moved = false;
+		Tile tile = null;
+		if (nextOb.path != null && nextOb.path.length != 0)
+			tile = nextOb.path[0].getRandomTile();
 		
 		int xp = ctx.skills.experience(Constants.SKILLS_AGILITY);
 		while (!ctx.controller.isStopping() && getRuntime() <= t) {
@@ -151,6 +152,16 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 			
 			if (!runner.atEnd() && !runner.atStart() && ctx.game.floor() == 0)
 				return false;
+			
+			if (!moved && tile != null) {
+				TileMatrix pos = tile.matrix(ctx);
+				if (pos.onMap()) {
+					Condition.sleep(randomRange(0, 300));
+					Point p = pos.mapPoint();
+					ctx.input.move(p);
+					moved = true;
+				}
+			}
 			
 			if (followObject) {
 				ctx.input.move(next.centerPoint());
@@ -213,6 +224,21 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 		return false;
 	}
 	
+	final Course getNearestCourse(CourseLoader courseLoader) {
+		Tile myPos = ctx.players.local().tile();
+		int courseId = 0;
+		double dist = courseLoader.getCourse(courseId).startArea.getCentralTile().distanceTo(myPos);
+		for (int i = 1; i < courseLoader.getCourses().length; i++) {
+			double dist2 = courseLoader.getCourse(i).startArea.getCentralTile().distanceTo(myPos);
+			if (dist2 < dist) {
+				courseId = i;
+				dist = dist2;
+			}
+		}
+		
+		return courseLoader.getCourse(courseId);
+	}
+	
 	final boolean relocate() {
 		GameObject first = getObstacleObject(runner.current());
 		Area startArea = runner.getCourse().startArea;
@@ -224,7 +250,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 			Condition.wait(new Callable<Boolean>() {
 				@Override
 				public Boolean call() throws Exception {
-					return ctx.movement.distance(ctx.movement.destination()) < 3;
+					return ctx.movement.distance(ctx.movement.destination()) < 5;
 				}
 			}, 10, 6000);
 		}
@@ -288,13 +314,15 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 		g2.setColor(Color.GREEN);
 		g2.drawString("Time running: " + formatInterval(getRuntime(), false), 10, 30);
 		g2.drawString("XP Per Hour: " + getXPPerHour(), 10, 60);
-		g2.drawString("Laps done: " + laps, 10, 90);
-		g2.drawString("Marks of grace: " + marksOfGracePickedUp, 10, 120);
+		g2.drawString("XP Earned: " + (ctx.skills.experience(Constants.SKILLS_AGILITY) - startXP), 10, 90);
+		g2.drawString("Laps done: " + laps, 10, 120);
+		g2.drawString("Marks of grace: " + marksOfGracePickedUp, 10, 150);
+		g2.drawString("Current obstacle: " + runner.current().title, 10, 180);
 	}
 	
 	@Override
 	public void start() {
-		runner = new AgilityCourseManager(COURSE_LOADER.getCourse(COURSE_ID));
+		runner = new AgilityCourseManager(getNearestCourse(COURSE_LOADER));
 		ctx.camera.pitch(randomRange(runner.getCourse().pitches));
 	}
 	
@@ -351,7 +379,7 @@ public class AgilityTrainer extends PollingScript<ClientContext> implements Pain
 		if (runner.atStart())
 			laps++;
 		
-		Condition.sleep(200);
+		Condition.sleep(100);
 		runner.reset();
 	}
 }
